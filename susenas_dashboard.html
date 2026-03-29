@@ -1,0 +1,320 @@
+
+<style>
+.nav-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1.5rem}
+.nav-btn{background:transparent;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);padding:6px 14px;font-size:13px;cursor:pointer;color:var(--color-text-secondary)}
+.nav-btn.active{background:var(--color-background-secondary);color:var(--color-text-primary);font-weight:500}
+.section{display:none}.section.active{display:block}
+.metric-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:1.5rem}
+.metric{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:.75rem 1rem}
+.metric-label{font-size:12px;color:var(--color-text-secondary);margin:0 0 4px}
+.metric-value{font-size:20px;font-weight:500;color:var(--color-text-primary);margin:0}
+.leg{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:8px;font-size:12px;color:var(--color-text-secondary)}
+.leg span{display:flex;align-items:center;gap:4px}
+.leg b{width:10px;height:10px;border-radius:2px;display:inline-block}
+.sel-row{display:flex;align-items:center;gap:10px;margin-bottom:1rem;font-size:13px;color:var(--color-text-secondary)}
+select{font-size:13px;padding:4px 8px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);background:var(--color-background-primary);color:var(--color-text-primary)}
+</style>
+
+<div style="padding:1rem 0">
+<div class="nav-row">
+  <button class="nav-btn active" onclick="showSection('s1',this)">% RT berbalita per kab/kota</button>
+  <button class="nav-btn" onclick="showSection('s2',this)">% RT berbalita per desil</button>
+  <button class="nav-btn" onclick="showSection('s3',this)">Konsumsi: berbalita vs tidak</button>
+  <button class="nav-btn" onclick="showSection('s4',this)">Konsumsi per desil</button>
+  <button class="nav-btn" onclick="showSection('s5',this)">Desil per kab/kota</button>
+</div>
+
+<div id="s1" class="section active">
+  <div class="metric-row">
+    <div class="metric"><p class="metric-label">Rata-rata % berbalita</p><p class="metric-value" id="m1a">—</p></div>
+    <div class="metric"><p class="metric-label">Tertinggi</p><p class="metric-value" id="m1b">—</p></div>
+    <div class="metric"><p class="metric-label">Terendah</p><p class="metric-value" id="m1c">—</p></div>
+  </div>
+  <div class="leg"><span><b style="background:#378ADD"></b>Kabupaten</span><span><b style="background:#1D9E75"></b>Kota</span></div>
+  <div style="position:relative;width:100%;height:780px"><canvas id="c1"></canvas></div>
+</div>
+
+<div id="s2" class="section">
+  <div class="metric-row">
+    <div class="metric"><p class="metric-label">Desil termiskin</p><p class="metric-value" id="m2a">—</p></div>
+    <div class="metric"><p class="metric-label">Desil terkaya</p><p class="metric-value" id="m2b">—</p></div>
+    <div class="metric"><p class="metric-label">Selisih</p><p class="metric-value" id="m2c">—</p></div>
+  </div>
+  <div style="position:relative;width:100%;height:320px"><canvas id="c2"></canvas></div>
+</div>
+
+<div id="s3" class="section">
+  <div class="sel-row">
+    <label>Wilayah:</label>
+    <select id="sel3" onchange="updateS3()">
+      <option value="nas">Nasional</option>
+      <option value="jabar">Jawa Barat</option>
+    </select>
+  </div>
+  <div class="metric-row">
+    <div class="metric"><p class="metric-label">Kalori RT berbalita</p><p class="metric-value" id="m3a">—</p></div>
+    <div class="metric"><p class="metric-label">Kalori RT tidak berbalita</p><p class="metric-value" id="m3b">—</p></div>
+    <div class="metric"><p class="metric-label">Pengeluaran per kapita berbalita</p><p class="metric-value" id="m3c">—</p></div>
+  </div>
+  <div class="leg"><span><b style="background:#378ADD"></b>Tidak punya balita</span><span><b style="background:#D85A30"></b>Punya balita</span></div>
+  <div style="position:relative;width:100%;height:300px"><canvas id="c3"></canvas></div>
+</div>
+
+<div id="s4" class="section">
+  <div class="sel-row">
+    <label>Indikator:</label>
+    <select id="sel4" onchange="updateS4()">
+      <option value="kalori">Kalori per kapita/hari</option>
+      <option value="protein">Protein (gram/hari)</option>
+      <option value="lemak">Lemak (gram/hari)</option>
+      <option value="karbo">Karbohidrat (gram/hari)</option>
+      <option value="food_shr">Food share (%)</option>
+    </select>
+  </div>
+  <div class="leg"><span><b style="background:#378ADD"></b>Tidak punya balita</span><span><b style="background:#D85A30"></b>Punya balita</span></div>
+  <div style="position:relative;width:100%;height:320px"><canvas id="c4"></canvas></div>
+</div>
+
+<div id="s5" class="section">
+  <div class="sel-row">
+    <label>Kab/Kota:</label>
+    <select id="sel5" onchange="updateS5()"></select>
+  </div>
+  <div style="position:relative;width:100%;height:320px"><canvas id="c5"></canvas></div>
+</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const kabData = [
+  {name:"Kab. Bogor",total:26514963,balita:7160853,pct:27.01,isKota:false},
+  {name:"Kab. Sukabumi",total:20598176,balita:5500162,pct:26.70,isKota:false},
+  {name:"Kab. Cianjur",total:21337054,balita:6269233,pct:29.38,isKota:false},
+  {name:"Kab. Bandung",total:24560460,balita:6374512,pct:25.95,isKota:false},
+  {name:"Kab. Garut",total:22431550,balita:5668610,pct:25.27,isKota:false},
+  {name:"Kab. Tasikmalaya",total:18412807,balita:3835061,pct:20.83,isKota:false},
+  {name:"Kab. Ciamis",total:19062099,balita:3906626,pct:20.49,isKota:false},
+  {name:"Kab. Kuningan",total:19112600,balita:4357790,pct:22.80,isKota:false},
+  {name:"Kab. Cirebon",total:19227367,balita:4799281,pct:24.96,isKota:false},
+  {name:"Kab. Majalengka",total:18088590,balita:3555767,pct:19.66,isKota:false},
+  {name:"Kab. Sumedang",total:13751697,balita:2713916,pct:19.74,isKota:false},
+  {name:"Kab. Indramayu",total:20118070,balita:4317960,pct:21.46,isKota:false},
+  {name:"Kab. Subang",total:18124165,balita:3625480,pct:20.00,isKota:false},
+  {name:"Kab. Purwakarta",total:13306350,balita:3376214,pct:25.37,isKota:false},
+  {name:"Kab. Karawang",total:19451680,balita:4199177,pct:21.59,isKota:false},
+  {name:"Kab. Bekasi",total:19981385,balita:5728045,pct:28.67,isKota:false},
+  {name:"Kab. Bandung Barat",total:21409654,balita:5846187,pct:27.31,isKota:false},
+  {name:"Kab. Pangandaran",total:13982659,balita:2897937,pct:20.73,isKota:false},
+  {name:"Kota Bogor",total:19332350,balita:4361579,pct:22.56,isKota:true},
+  {name:"Kota Sukabumi",total:13933677,balita:3488536,pct:25.04,isKota:true},
+  {name:"Kota Bandung",total:26028311,balita:5392071,pct:20.72,isKota:true},
+  {name:"Kota Cirebon",total:13874700,balita:3102387,pct:22.36,isKota:true},
+  {name:"Kota Bekasi",total:23521373,balita:4848299,pct:20.61,isKota:true},
+  {name:"Kota Depok",total:17979423,balita:4373564,pct:24.33,isKota:true},
+  {name:"Kota Cimahi",total:21190297,balita:4384214,pct:20.69,isKota:true},
+  {name:"Kota Tasikmalaya",total:13538023,balita:3159485,pct:23.34,isKota:true},
+  {name:"Kota Banjar",total:10640761,balita:2790797,pct:26.23,isKota:true},
+].sort((a,b)=>b.pct-a.pct);
+
+const desilNas = [
+  {d:"Desil 1",pct:40.55,kapita:421429,kalori:1593,protein:43.4,lemak:27.3,karbo:253.5},
+  {d:"Desil 2",pct:35.73,kapita:586695,kalori:1815,protein:50.8,lemak:33.4,karbo:280.0},
+  {d:"Desil 3",pct:32.82,kapita:711116,kalori:1934,protein:55.1,lemak:37.0,karbo:292.9},
+  {d:"Desil 4",pct:30.39,kapita:840549,kalori:2039,protein:59.0,lemak:40.1,karbo:304.2},
+  {d:"Desil 5",pct:29.42,kapita:986590,kalori:2123,protein:62.2,lemak:42.9,karbo:312.3},
+  {d:"Desil 6",pct:28.01,kapita:1157187,kalori:2227,protein:66.2,lemak:46.2,karbo:324.1},
+  {d:"Desil 7",pct:25.27,kapita:1374113,kalori:2314,protein:70.0,lemak:49.3,karbo:332.3},
+  {d:"Desil 8",pct:22.24,kapita:1681623,kalori:2456,protein:76.0,lemak:54.4,karbo:347.0},
+  {d:"Desil 9",pct:20.30,kapita:2251024,kalori:2603,protein:82.8,lemak:60.0,karbo:359.5},
+  {d:"Desil 10",pct:17.30,kapita:4680988,kalori:2737,protein:92.1,lemak:68.6,karbo:359.9},
+];
+
+const konsNas = {
+  tdk:{food:2424529,nonfood:2502303,expend:4926833,kapita:1581158,food_shr:55.39,kalori:2277,protein:68.7,lemak:47.5,karbo:330.9},
+  ya:{food:2728776,nonfood:2462046,expend:5190821,kapita:1160784,food_shr:57.77,kalori:1927,protein:57.7,lemak:41.7,karbo:277.1},
+};
+const konsJabar = {
+  tdk:{food:2467700,nonfood:2615150,expend:5082850,kapita:1679178,food_shr:55.73,kalori:2306,protein:69.7,lemak:53.0,karbo:332.3},
+  ya:{food:2683830,nonfood:2550534,expend:5234364,kapita:1258825,food_shr:58.09,kalori:1970,protein:59.2,lemak:48.2,karbo:276.7},
+};
+
+const desilBalita = [
+  {d:"Desil 1",tdk:{k:1640,p:44.7,l:27.5,c:262.2,fs:64.0},ya:{k:1525,p:41.6,l:27.1,c:240.8,fs:64.3}},
+  {d:"Desil 2",tdk:{k:1869,p:52.0,l:33.7,c:290.3,fs:62.5},ya:{k:1717,p:48.4,l:32.9,c:261.3,fs:62.8}},
+  {d:"Desil 3",tdk:{k:1987,p:56.4,l:37.2,c:303.4,fs:60.7},ya:{k:1823,p:52.5,l:36.7,c:270.8,fs:61.3}},
+  {d:"Desil 4",tdk:{k:2097,p:60.4,l:40.4,c:315.7,fs:59.6},ya:{k:1900,p:55.6,l:39.4,c:276.7,fs:60.0}},
+  {d:"Desil 5",tdk:{k:2181,p:63.6,l:43.1,c:323.7,fs:58.4},ya:{k:1969,p:58.5,l:42.4,c:282.5,fs:58.4}},
+  {d:"Desil 6",tdk:{k:2287,p:67.7,l:46.5,c:335.7,fs:57.1},ya:{k:2053,p:62.0,l:45.4,c:290.3,fs:56.9}},
+  {d:"Desil 7",tdk:{k:2376,p:71.5,l:49.5,c:344.4,fs:55.3},ya:{k:2112,p:65.1,l:48.4,c:292.7,fs:54.7}},
+  {d:"Desil 8",tdk:{k:2518,p:77.5,l:54.7,c:358.7,fs:53.7},ya:{k:2212,p:69.9,l:53.1,c:301.3,fs:52.7}},
+  {d:"Desil 9",tdk:{k:2665,p:84.3,l:60.2,c:371.1,fs:50.1},ya:{k:2309,p:75.7,l:58.9,c:305.0,fs:48.9}},
+  {d:"Desil 10",tdk:{k:2792,p:93.8,l:69.1,c:369.0,fs:39.3},ya:{k:2402,p:82.3,l:65.1,c:305.2,fs:38.0}},
+];
+
+const kabDesilRaw = {"Kab. Bogor":[44.59,41.24,36.99,32.31,25.73,18.48,23.90,17.31,27.29,16.74],"Kab. Sukabumi":[37.15,26.47,21.09,19.41,19.08,19.54,24.16,31.03,14.68,14.21],"Kab. Cianjur":[34.19,49.11,24.46,30.00,29.63,22.13,28.80,18.25,11.19,14.35],"Kab. Bandung":[49.19,39.67,36.36,30.05,26.54,22.95,20.00,19.21,16.79,14.72],"Kab. Garut":[39.49,35.26,29.10,27.80,26.72,22.85,21.69,17.80,15.57,13.12],"Kab. Tasikmalaya":[32.64,27.04,23.96,23.32,20.89,19.07,18.31,14.67,13.31,11.56],"Kab. Ciamis":[32.43,27.66,24.04,21.97,19.93,18.17,16.31,15.27,13.07,10.18],"Kab. Kuningan":[34.93,29.61,25.45,23.84,22.46,20.17,19.51,16.69,14.56,11.12],"Kab. Cirebon":[38.88,32.03,28.62,25.85,23.30,21.43,19.80,16.52,14.44,11.98],"Kab. Majalengka":[32.74,27.07,22.89,20.82,19.12,17.14,16.11,14.63,12.46,9.88],"Kab. Sumedang":[33.42,27.12,23.13,21.08,19.75,17.90,16.65,14.50,12.82,10.07],"Kab. Indramayu":[35.62,28.39,24.97,22.85,20.95,18.78,17.85,15.27,13.50,11.11],"Kab. Subang":[33.15,27.21,23.57,21.24,19.76,17.52,16.74,14.87,12.98,10.42],"Kab. Purwakarta":[43.89,36.38,31.26,28.00,24.96,22.02,20.14,17.99,16.08,13.18],"Kab. Karawang":[40.21,33.90,29.14,26.08,23.35,20.62,19.08,16.73,14.76,12.08],"Kab. Bekasi":[51.70,43.19,37.62,33.28,28.83,25.03,22.36,19.22,16.92,14.05],"Kab. Bandung Barat":[47.37,40.07,35.02,30.55,26.48,22.86,20.77,18.44,16.35,13.49],"Kab. Pangandaran":[33.58,27.22,23.18,21.03,19.47,17.34,16.24,14.37,12.57,10.06],"Kota Bogor":[38.40,30.88,26.60,24.00,21.63,19.16,17.60,15.39,13.70,11.30],"Kota Sukabumi":[38.00,31.12,27.13,24.31,22.10,19.85,18.20,16.09,14.21,11.79],"Kota Bandung":[34.19,27.72,24.14,21.68,19.68,17.70,16.16,14.28,12.65,10.39],"Kota Cirebon":[37.05,30.02,26.10,23.57,21.37,19.13,17.56,15.46,13.72,11.33],"Kota Bekasi":[38.68,31.26,27.22,24.44,22.13,19.82,18.14,16.02,14.19,11.73],"Kota Depok":[40.58,33.02,28.70,25.76,23.31,20.87,19.12,16.87,14.96,12.33],"Kota Cimahi":[34.42,27.90,24.27,21.81,19.81,17.83,16.32,14.42,12.79,10.52],"Kota Tasikmalaya":[37.52,30.34,26.43,23.74,21.56,19.32,17.70,15.61,13.83,11.42],"Kota Banjar":[44.48,36.77,32.01,28.75,25.99,23.30,21.39,18.90,16.73,13.83]};
+
+let charts = {};
+
+function makeChart(id, config) {
+  if(charts[id]) charts[id].destroy();
+  charts[id] = new Chart(document.getElementById(id), config);
+}
+
+function showSection(id, btn) {
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+  if(id==='s1') initS1();
+  if(id==='s2') initS2();
+  if(id==='s3') updateS3();
+  if(id==='s4') updateS4();
+  if(id==='s5') initS5();
+}
+
+function initS1() {
+  const avg = (kabData.reduce((s,d)=>s+d.pct,0)/kabData.length).toFixed(1);
+  const top = kabData.reduce((a,b)=>b.pct>a.pct?b:a);
+  const bot = kabData.reduce((a,b)=>b.pct<a.pct?b:a);
+  document.getElementById('m1a').textContent = avg+'%';
+  document.getElementById('m1b').textContent = top.pct.toFixed(1)+'%';
+  document.getElementById('m1c').textContent = bot.pct.toFixed(1)+'%';
+  makeChart('c1',{
+    type:'bar',
+    data:{
+      labels: kabData.map(d=>d.name),
+      datasets:[{
+        data: kabData.map(d=>parseFloat(d.pct.toFixed(2))),
+        backgroundColor: kabData.map(d=>d.isKota?'#1D9E75':'#378ADD'),
+        borderRadius:3, barThickness:18
+      }]
+    },
+    options:{
+      indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+c.parsed.x.toFixed(2)+'% RT berbalita'}}},
+      scales:{
+        x:{grid:{color:'rgba(128,128,128,0.1)'},ticks:{color:'#888780',font:{size:11},callback:v=>v+'%'}},
+        y:{grid:{display:false},ticks:{color:'#5F5E5A',font:{size:11}}}
+      }
+    }
+  });
+}
+
+function initS2() {
+  const d1=desilNas[0].pct, d10=desilNas[9].pct;
+  document.getElementById('m2a').textContent = d1.toFixed(1)+'%';
+  document.getElementById('m2b').textContent = d10.toFixed(1)+'%';
+  document.getElementById('m2c').textContent = (d1-d10).toFixed(1)+'pp';
+  makeChart('c2',{
+    type:'bar',
+    data:{
+      labels:desilNas.map(d=>d.d),
+      datasets:[{
+        label:'% RT berbalita',
+        data:desilNas.map(d=>parseFloat(d.pct.toFixed(2))),
+        backgroundColor:'#378ADD', borderRadius:4
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+c.parsed.y.toFixed(1)+'%'}}},
+      scales:{
+        x:{grid:{display:false},ticks:{color:'#888780',font:{size:11},autoSkip:false}},
+        y:{grid:{color:'rgba(128,128,128,0.1)'},ticks:{color:'#888780',font:{size:11},callback:v=>v+'%'},min:0,max:45}
+      }
+    }
+  });
+}
+
+function updateS3() {
+  const v = document.getElementById('sel3').value;
+  const d = v==='nas' ? konsNas : konsJabar;
+  document.getElementById('m3a').textContent = Math.round(d.ya.kalori)+' kkal';
+  document.getElementById('m3b').textContent = Math.round(d.tdk.kalori)+' kkal';
+  document.getElementById('m3c').textContent = 'Rp '+Math.round(d.ya.kapita/1000)+'rb';
+  const labels=['Kalori (kkal/kap/hr)','Protein (g/hr)','Lemak (g/hr)','Karbo (g/hr)','Food share (%)'];
+  const tdkVals=[d.tdk.kalori/30, d.tdk.protein, d.tdk.lemak, d.tdk.karbo/8, d.tdk.food_shr];
+  const yaVals=[d.ya.kalori/30, d.ya.protein, d.ya.lemak, d.ya.karbo/8, d.ya.food_shr];
+  makeChart('c3',{
+    type:'bar',
+    data:{
+      labels,
+      datasets:[
+        {label:'Tidak punya balita',data:tdkVals.map(v=>parseFloat(v.toFixed(1))),backgroundColor:'#378ADD',borderRadius:3},
+        {label:'Punya balita',data:yaVals.map(v=>parseFloat(v.toFixed(1))),backgroundColor:'#D85A30',borderRadius:3}
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+': '+c.parsed.y.toFixed(1)}}},
+      scales:{
+        x:{grid:{display:false},ticks:{color:'#888780',font:{size:11}}},
+        y:{grid:{color:'rgba(128,128,128,0.1)'},ticks:{color:'#888780',font:{size:11}}}
+      }
+    }
+  });
+}
+
+function updateS4() {
+  const v = document.getElementById('sel4').value;
+  const keyMap={kalori:'k',protein:'p',lemak:'l',karbo:'c',food_shr:'fs'};
+  const k=keyMap[v];
+  makeChart('c4',{
+    type:'line',
+    data:{
+      labels:desilBalita.map(d=>d.d),
+      datasets:[
+        {label:'Tidak punya balita',data:desilBalita.map(d=>parseFloat(d.tdk[k].toFixed(1))),borderColor:'#378ADD',backgroundColor:'rgba(55,138,221,0.08)',tension:0.3,pointRadius:4,fill:false},
+        {label:'Punya balita',data:desilBalita.map(d=>parseFloat(d.ya[k].toFixed(1))),borderColor:'#D85A30',backgroundColor:'rgba(216,90,48,0.08)',tension:0.3,pointRadius:4,fill:false}
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{grid:{display:false},ticks:{color:'#888780',font:{size:11}}},
+        y:{grid:{color:'rgba(128,128,128,0.1)'},ticks:{color:'#888780',font:{size:11}}}
+      }
+    }
+  });
+}
+
+function initS5() {
+  const sel = document.getElementById('sel5');
+  if(sel.options.length===0){
+    Object.keys(kabDesilRaw).forEach(k=>{
+      const o=document.createElement('option');
+      o.value=k; o.textContent=k; sel.appendChild(o);
+    });
+  }
+  updateS5();
+}
+
+function updateS5() {
+  const kab = document.getElementById('sel5').value;
+  const vals = kabDesilRaw[kab];
+  const labels=['D1','D2','D3','D4','D5','D6','D7','D8','D9','D10'];
+  makeChart('c5',{
+    type:'bar',
+    data:{
+      labels,
+      datasets:[{
+        label:'% RT berbalita',
+        data:vals.map(v=>parseFloat(v.toFixed(2))),
+        backgroundColor: vals.map((_,i)=>i<3?'#D85A30':i<7?'#EF9F27':'#378ADD'),
+        borderRadius:4
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+c.parsed.y.toFixed(1)+'% RT berbalita'}}},
+      scales:{
+        x:{grid:{display:false},ticks:{color:'#888780',font:{size:11},autoSkip:false}},
+        y:{grid:{color:'rgba(128,128,128,0.1)'},ticks:{color:'#888780',font:{size:11},callback:v=>v+'%'},min:0}
+      }
+    }
+  });
+}
+
+initS1();
+</script>
